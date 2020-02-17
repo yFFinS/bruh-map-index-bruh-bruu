@@ -60,10 +60,10 @@ class Label(InterfaceObject):
         self.render_text()
 
     def render_text(self):
-        line = self.font(self.text, True, self.text_color)
-        line.rect.center = (self.size[0] // 2, self.size[1] // 2)
+        line = self.font.render(self.text, True, self.text_color)
+        rect = line.get_rect(center=(self.size[0] // 2, self.size[1] // 2))
         self.init_image()
-        self.image.blit(line, line.rect.topleft)
+        self.image.blit(line, rect)
 
     def update(self, event):
         pass

@@ -20,7 +20,7 @@ def start_screen(screen):
     pg.display.flip()
 
     g = pg.sprite.Group()
-    lab = Label((20, 20), (300, 50), g, 'hello', (255, 100, 100), None, borders_color=(200, 200, 100), borders_width=3)
+    lab = Label((20, 20), (300, 50), g, 'hello', None, (255, 100, 100), borders_color=(200, 200, 100), borders_width=3)
 
     while running:
         g.draw(screen)
