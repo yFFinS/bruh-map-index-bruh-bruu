@@ -1,6 +1,7 @@
 import pygame
 import requests
 
+
 def start_screen(screen):
     font = pygame.font.Font(None, 60)
     text = font.render("Введите начальные координаты/адрес", 1, (100, 255, 100))
@@ -47,9 +48,54 @@ def start_screen(screen):
                 pygame.display.flip()
 
 
-pygame.init()
-size = 1000, 800
-screen = pygame.display.set_mode(size)
+def make_point(request_text):
+    geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
 
-start_search_text = start_screen(screen)
-print(start_search_text)
+    geocoder_params = {
+        "apikey": "40d1649f-0493-4b70-98ba-98533de7710b",
+        "geocode": request_text,
+        "format": "json"}
+
+    response = requests.get(geocoder_api_server, params=geocoder_params)
+
+    if not response:
+        print('Поиск координат,', response)
+        exit()
+
+    return ','.join(response.json()["response"]["GeoObjectCollection"][
+                        "featureMember"][0]["GeoObject"]["Point"]["pos"].split(' '))
+
+
+def make_map(point, spn, filename):
+    map_api_server = "http://static-maps.yandex.ru/1.x/"
+    map_params = {
+        "ll": point,
+        "l": "map",
+        "size": (650, 450),
+        "spn": spn}
+
+    response = requests.get(map_api_server, params=map_params)
+
+    if not response:
+        print('Создание карты,', response)
+        exit()
+
+    with open(filename, 'w') as pic:
+        pic.write(response.content)
+
+
+def main():
+    pygame.init()
+    size = 1000, 800
+    screen = pygame.display.set_mode(size)
+
+    start_search_text = start_screen(screen)
+
+    point = make_point(start_search_text)
+    print(point)
+
+    make_map(point, 0.01, 'first_map')
+
+
+if __name__ == '__main__':
+    main()
