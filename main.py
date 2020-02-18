@@ -3,7 +3,7 @@ import os
 import pygame as pg
 import requests
 
-from interface import Label, Button, TextField
+from interface import Label, Button, TextField, Image
 
 
 def add_label(pos, size=(0, 0), text='', font_size=20, text_color=(255, 255, 255),
@@ -34,25 +34,28 @@ def add_textfield(pos, size=(0, 0), init_text='', font_size=20, text_color=(255,
     return obj
 
 
-def start_screen(screen):
-    global running
+def add_image(pos, size=(0, 0), bg_color=(0, 0, 0), borders_color=(0, 0, 0), borders_width=1):
+    obj = Image(pos, size=size, bg_color=bg_color, borders_color=borders_color, borders_width=borders_width)
+    interface.add(obj)
+    return obj
 
-    add_label((70, 200), text="Введите начальные координаты/адрес", font_size=60, text_color=(100, 255, 100),
-              borders_color=(100, 100, 100), borders_width=10)
-    add_textfield((70, 300), (860, 50), init_text="если текст не влез в рамку я не виновата",
-                  borders_color=(100, 255, 100), borders_width=2, font_size=20, action=load_map)
+
+def start_screen(screen):
+    global running, map_image
+
+    add_label((70, 10), text="Введите начальные координаты/адрес", font_size=60, text_color=(100, 255, 100),
+              borders_color=(100, 255, 100), borders_width=5)
+    add_textfield((70, 80), (860, 50), init_text="если текст не влез в рамку я не виновата",
+                  borders_color=(100, 255, 100), borders_width=2, font_size=30, action=load_map)
+
+    map_image = add_image((180, 160), map_size, borders_width=1, borders_color=(100, 255, 100))
     running = True
 
     pg.display.flip()
 
     while running:
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                running = False
-            if event.type == pg.KEYDOWN:
-                pass
-            interface.update(event)
-
+        handle_events()
+        handle_keys()
         interface.draw(screen)
         pg.display.flip()
 
@@ -72,12 +75,11 @@ def make_point(request_text):
 
 
 def to_param(arg):
-    return str(arg).replace(' ', '').replace('\t', '').replace('\r', '').replace('\n', '')\
+    return str(arg).replace(' ', '').replace('\t', '').replace('\r', '').replace('\n', '') \
         .replace('(', '').replace(')', '').replace('[', '').replace(']', '').replace('\'', '').replace('\"', '')
 
 
 def make_map(point, spn, size, filename):
-    print('Point ll: ', point)
     map_params = {
         "ll": to_param(point),
         "l": "map",
@@ -92,17 +94,18 @@ def make_map(point, spn, size, filename):
     with open(filename, 'wb') as pic:
         pic.write(response.content)
 
+    map_image.set_image_from_file(filename)
+
 
 def load_map(request):
+    global point
     try:
         point = make_point(request)
-
+        print('Point ll: ', point)
         make_map(point, spn, map_size, filename)
     except IndexError:
         print('Wrong point')
         exit(-1)
-
-    terminate()
 
 
 def terminate():
@@ -111,20 +114,6 @@ def terminate():
 
 
 def main():
-    global interface, spn, map_size, filename, map_api_server, geocoder_api_server, apikey
-
-    pg.init()
-
-    map_size = (600, 450)
-    spn = (0.01, 0.01)
-    filename = "map.png"
-    map_api_server = "https://static-maps.yandex.ru/1.x/"
-    geocoder_api_server = "https://geocode-maps.yandex.ru/1.x/"
-    apikey = "40d1649f-0493-4b70-98ba-98533de7710b"
-
-    interface = pg.sprite.Group()
-    size = 1000, 800
-    screen = pg.display.set_mode(size)
     start_screen(screen)
 
     pg.quit()
@@ -132,11 +121,60 @@ def main():
 
 
 def exit_dialog():
-    if input('Write S to save map file: ') not in {'s', 'S'}:
+    try:
         os.remove(filename)
         print('File deleted')
-    else:
-        print('File saved')
+    except FileNotFoundError:
+        print('File not found')
+
+
+def handle_events():
+    for event in pg.event.get():
+        if event.type == pg.QUIT:
+            terminate()
+        if event.type == pg.KEYDOWN:
+            keys.add(event.key)
+        if event.type == pg.KEYUP and event.key in keys:
+            keys.remove(event.key)
+        interface.update(event)
+
+
+def handle_keys():
+    if pg.K_PAGEUP in keys:
+        zoom(0.5)
+        keys.remove(pg.K_PAGEUP)
+    if pg.K_PAGEDOWN in keys:
+        zoom(2)
+        keys.remove(pg.K_PAGEDOWN)
+
+
+def zoom(zoom_factor):
+    global spn
+    a = min(10.24, max(0.000625, spn[0] * zoom_factor))
+    b = min(10.24, max(0.000625, spn[1] * zoom_factor))
+    spn = a, b
+    if point is not None:
+        make_map(point, spn, map_size, filename)
+
+
+def translate(dx, dy):
+    pass
+
+
+pg.init()
+interface = pg.sprite.Group()
+size = 1000, 800
+screen = pg.display.set_mode(size)
+pg.display.set_caption('app 2 h4ck 1dex ly7')
+keys = set()
+
+map_size = (650, 450)
+spn = (0.01, 0.01)
+filename = "map.png"
+map_api_server = "https://static-maps.yandex.ru/1.x/"
+geocoder_api_server = "https://geocode-maps.yandex.ru/1.x/"
+apikey = "40d1649f-0493-4b70-98ba-98533de7710b"
+point = None
 
 
 if __name__ == '__main__':

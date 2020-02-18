@@ -16,6 +16,7 @@ class SimpleInterfaceObject(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.topleft = pos
         self.render_image()
+        self.render_borders()
 
     def move(self, pos, is_center=False):
         if is_center:
@@ -25,8 +26,11 @@ class SimpleInterfaceObject(pg.sprite.Sprite):
 
     def render_image(self):
         self.image.fill(self.bg_color)
-        size = self.rect.size
-        pg.draw.rect(self.image, self.borders_color, (0, 0, *size), self.borders_width)
+
+    def render_borders(self):
+        if self.borders_width > 0:
+            size = self.rect.size
+            pg.draw.rect(self.image, self.borders_color, (0, 0, *size), self.borders_width)
 
     def resize(self, size):
         self.rect.size = size
@@ -52,12 +56,12 @@ class DynamicInterfaceObject(SimpleInterfaceObject):
             if event.button is BUTTON_LEFT:
                 self.pressed = self.hovered
         if event.type is MOUSEBUTTONUP:
-            if self.rect.collidepoint(event.pos) and self.pressed:
-                self.on_click_event()
+            self.on_click_event(bool(self.rect.collidepoint(event.pos)) and self.pressed)
             self.pressed = False
 
-    def on_click_event(self):
-        self.start_action()
+    def on_click_event(self, collided=True):
+        if collided:
+            self.start_action()
 
     def start_action(self):
         if self.action is not None:
@@ -89,6 +93,7 @@ class Label(SimpleInterfaceObject):
         if not self.center_text:
             rect.x = 2 * self.borders_width + 1
         self.image.blit(line, rect)
+        self.render_borders()
 
     def set_text(self, text):
         if self.prevent_unfitted_text and self.font.size(text)[0] > self.rect.w - 2 * (2 * self.borders_width + 1):
@@ -108,7 +113,7 @@ class Button(DynamicInterfaceObject, Label):
 
 
 class TextField(DynamicInterfaceObject, Label):
-    init_text_color = (30, 30, 30)
+    init_text_color = (128, 128, 128)
 
     def __init__(self, pos=(0, 0), size=(0, 0), init_text='', font_size=20, text_color=(0, 0, 0),
                  bg_color=(255, 255, 255), borders_color=(255, 255, 255),
@@ -147,6 +152,30 @@ class TextField(DynamicInterfaceObject, Label):
         self.args = *self.args, self.text
         self.focused = False
         self.start_action()
+        self.args = self.args[:-1]
 
-    def on_click_event(self):
-        self.focused = True
+    def on_click_event(self, collided=True):
+        if collided:
+            self.focused = True
+            if self.text == '':
+                self.set_text('')
+        else:
+            self.focused = False
+            if self.text == '':
+                self.show_init_text()
+
+
+class Image(SimpleInterfaceObject):
+
+    def __init__(self, pos=(0, 0), size=(0, 0),
+                 bg_color=(255, 255, 255), borders_color=(255, 255, 255), borders_width=1, **kwargs):
+        super().__init__(pos, size, bg_color, borders_color, borders_width, **kwargs)
+
+    def set_image_from_file(self, filename):
+        try:
+            image = pg.image.load(filename)
+            self.image.blit(image, (0, 0))
+            self.render_borders()
+        except FileNotFoundError as err:
+            print(err)
+            return
