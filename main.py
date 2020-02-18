@@ -1,65 +1,65 @@
+import os
+
 import pygame as pg
-from interface import *
 import requests
+
+from interface import Label, Button, TextField
+
+
+def add_label(pos, size=(0, 0), text='', font_size=20, text_color=(255, 255, 255),
+              bg_color=(0, 0, 0), borders_color=(0, 0, 0), borders_width=1):
+    obj = Label(pos, size, text=text, font_size=font_size, text_color=text_color,
+                bg_color=bg_color, borders_color=borders_color, borders_width=borders_width)
+    interface.add(obj)
+    return obj
+
+
+def add_button(pos, size=(0, 0), text='', font_size=20, text_color=(255, 255, 255),
+               bg_color=(0, 0, 0), borders_color=(0, 0, 0), borders_width=1,
+               action=None, args=()):
+    obj = Button(pos, size, text=text, font_size=font_size, text_color=text_color,
+                 bg_color=bg_color, borders_color=borders_color, borders_width=borders_width,
+                 action=action, args=args)
+    interface.add(obj)
+    return obj
+
+
+def add_textfield(pos, size=(0, 0), init_text='', font_size=20, text_color=(255, 255, 255),
+                  bg_color=(0, 0, 0), borders_color=(0, 0, 0), borders_width=1,
+                  action=None, args=()):
+    obj = TextField(pos, size, init_text=init_text, font_size=font_size, text_color=text_color,
+                    bg_color=bg_color, borders_color=borders_color, borders_width=borders_width,
+                    action=action, args=args)
+    interface.add(obj)
+    return obj
 
 
 def start_screen(screen):
-    font = pg.font.Font(None, 60)
-    text = font.render("Введите начальные координаты/адрес", 1, (100, 255, 100))
-    screen.blit(text, (70, 200))
-    pg.draw.rect(screen, (100, 255, 100), (70, 300, 860, 50), 1)
-    font2 = pg.font.Font(None, 20)
-    text = font2.render("если текст не влез в рамку я не виновата", 1, (100, 255, 100))
-    screen.blit(text, (70, 360))
-    search_text = ''
-    button_text = font.render("Готово", 1, (100, 255, 100))
-    screen.blit(button_text, (400, 420))
-    pg.draw.rect(screen, (100, 255, 100), (380, 400, 180, 80), 1)
+    global running
+
+    add_label((70, 200), text="Введите начальные координаты/адрес", font_size=60, text_color=(100, 255, 100),
+              borders_color=(100, 100, 100), borders_width=10)
+    add_textfield((70, 300), (860, 50), init_text="если текст не влез в рамку я не виновата",
+                  borders_color=(100, 255, 100), borders_width=2, font_size=20, action=load_map)
     running = True
-    focused = False
+
     pg.display.flip()
 
-    g = pg.sprite.Group()
-    lab = Label((20, 20), (300, 50), g, 'hello', None, (255, 100, 100), borders_color=(200, 200, 100), borders_width=3)
-
     while running:
-        g.draw(screen)
         for event in pg.event.get():
-            g.update(event)
             if event.type == pg.QUIT:
                 running = False
             if event.type == pg.KEYDOWN:
-                if event.key == pg.K_BACKSPACE:
-                    search_text = search_text[:-1]
-                    pg.draw.rect(screen, (0, 0, 0), (71, 301, 858, 48))
-                else:
-                    search_text += event.unicode
-                font3 = pg.font.Font(None, 30)
-                screen.blit(font3.render(search_text, 1, (100, 255, 100)), (75, 315))
-                pg.display.flip()
-            if event.type == pg.MOUSEBUTTONDOWN:
-                if focused:
-                    return search_text
-            if event.type == pg.MOUSEMOTION:
-                x, y = event.pos
-                if 380 <= x <= 560 and 400 <= y <= 480:
-                    focused = True
-                    button_text = font.render("Готово", 1, (255, 255, 255))
-                    screen.blit(button_text, (400, 420))
-                    pg.draw.rect(screen, (255, 255, 255), (380, 400, 180, 80), 1)
-                else:
-                    focused = False
-                    button_text = font.render("Готово", 1, (100, 255, 100))
-                    screen.blit(button_text, (400, 420))
-                    pg.draw.rect(screen, (100, 255, 100), (380, 400, 180, 80), 1)
-                pg.display.flip()
+                pass
+            interface.update(event)
+
+        interface.draw(screen)
+        pg.display.flip()
 
 
 def make_point(request_text):
-    geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
-
     geocoder_params = {
-        "apikey": "40d1649f-0493-4b70-98ba-98533de7710b",
+        "apikey": apikey,
         "geocode": request_text,
         "format": "json"}
 
@@ -67,41 +67,77 @@ def make_point(request_text):
 
     if not response:
         print('Поиск координат,', response)
-        exit()
-
-    return ','.join(response.json()["response"]["GeoObjectCollection"][
-                        "featureMember"][0]["GeoObject"]["Point"]["pos"].split(' '))
+        exit(-1)
+    return response.json()["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]["Point"]["pos"].split()
 
 
-def make_map(point, spn, filename):
-    map_api_server = "http://static-maps.yandex.ru/1.x/"
+def to_param(arg):
+    return str(arg).replace(' ', '').replace('\t', '').replace('\r', '').replace('\n', '')\
+        .replace('(', '').replace(')', '').replace('[', '').replace(']', '').replace('\'', '').replace('\"', '')
+
+
+def make_map(point, spn, size, filename):
+    print('Point ll: ', point)
     map_params = {
-        "ll": point,
+        "ll": to_param(point),
         "l": "map",
-        "size": (650, 450),
-        "spn": spn}
-
+        "size": to_param(size),
+        "spn": to_param(spn)}
     response = requests.get(map_api_server, params=map_params)
 
     if not response:
         print('Создание карты,', response)
-        exit()
+        exit(-1)
 
-    with open(filename, 'w') as pic:
+    with open(filename, 'wb') as pic:
         pic.write(response.content)
 
 
+def load_map(request):
+    try:
+        point = make_point(request)
+
+        make_map(point, spn, map_size, filename)
+    except IndexError:
+        print('Wrong point')
+        exit(-1)
+
+    terminate()
+
+
+def terminate():
+    global running
+    running = False
+
+
 def main():
-    pygame.init()
+    global interface, spn, map_size, filename, map_api_server, geocoder_api_server, apikey
+
+    pg.init()
+
+    map_size = (600, 450)
+    spn = (0.01, 0.01)
+    filename = "map.png"
+    map_api_server = "https://static-maps.yandex.ru/1.x/"
+    geocoder_api_server = "https://geocode-maps.yandex.ru/1.x/"
+    apikey = "40d1649f-0493-4b70-98ba-98533de7710b"
+
+    interface = pg.sprite.Group()
     size = 1000, 800
-    screen = pygame.display.set_mode(size)
+    screen = pg.display.set_mode(size)
+    start_screen(screen)
 
-    start_search_text = start_screen(screen)
+    pg.quit()
+    exit_dialog()
 
-    point = make_point(start_search_text)
-    print(point)
 
-    make_map(point, 0.01, 'first_map')
+def exit_dialog():
+    if input('Write S to save map file: ') not in {'s', 'S'}:
+        os.remove(filename)
+        print('File deleted')
+    else:
+        print('File saved')
+
 
 if __name__ == '__main__':
     main()
