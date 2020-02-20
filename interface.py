@@ -129,8 +129,9 @@ class TextField(DynamicInterfaceObject, Label):
         super().update(event)
 
         if self.focused and event.type is KEYDOWN:
-            if event.key is K_BACKSPACE and self.text:
-                self.set_text(self.text[:-1])
+            if event.key is K_BACKSPACE:
+                if self.text:
+                    self.set_text(self.text[:-1])
             elif event.key is K_RETURN:
                 self.on_text_enter_event()
             elif KMOD_SHIFT & pg.key.get_mods():
@@ -170,12 +171,16 @@ class Image(SimpleInterfaceObject):
     def __init__(self, pos=(0, 0), size=(0, 0),
                  bg_color=(255, 255, 255), borders_color=(255, 255, 255), borders_width=1, **kwargs):
         super().__init__(pos, size, bg_color, borders_color, borders_width, **kwargs)
+        self.draw_pos = (self.rect.w // 3, self.rect.h // 3)
 
     def set_image_from_file(self, filename):
         try:
             image = pg.image.load(filename)
-            self.image.blit(image, (0, 0))
+            self.image.blit(image, self.draw_pos)
             self.render_borders()
         except FileNotFoundError as err:
             print(err)
             return
+
+    def translate(self, dx, dy):
+        self.draw_pos = self.draw_pos[0] + self.rect.w // 3 * dx, self.draw_pos[1] + self.rect.h // 3 * dy

@@ -1,4 +1,5 @@
 import os
+import math
 
 import pygame as pg
 import requests
@@ -48,7 +49,7 @@ def start_screen(screen):
     add_textfield((70, 80), (860, 50), init_text="если текст не влез в рамку я не виновата",
                   borders_color=(100, 255, 100), borders_width=2, font_size=30, action=load_map)
 
-    map_image = add_image((180, 160), map_size, borders_width=1, borders_color=(100, 255, 100))
+    map_image = add_image((180, 160), (map_size[0] * 3, map_size[1] * 3), borders_width=1, borders_color=(100, 255, 100))
     running = True
 
     pg.display.flip()
@@ -146,6 +147,18 @@ def handle_keys():
     if pg.K_PAGEDOWN in keys:
         zoom(2)
         keys.remove(pg.K_PAGEDOWN)
+    if pg.K_UP in keys:
+        translate(0, -1)
+        keys.remove(pg.K_UP)
+    if pg.K_DOWN in keys:
+        translate(0, 1)
+        keys.remove(pg.K_DOWN)
+    if pg.K_LEFT in keys:
+        translate(-1, 0)
+        keys.remove(pg.K_LEFT)
+    if pg.K_RIGHT in keys:
+        translate(1, 0)
+        keys.remove(pg.K_RIGHT)
 
 
 def zoom(zoom_factor):
@@ -158,18 +171,23 @@ def zoom(zoom_factor):
 
 
 def translate(dx, dy):
-    pass
+    global point
+    point[0] = str(float(point[0]) + 2 * dx * spn[0] * 2)
+    point[1] = str(float(point[1]) - 2 * dy * spn[1])
+    print(point)
+    map_image.translate(dx, dy)
+    make_map(point, spn, map_size, filename)
 
 
 pg.init()
 interface = pg.sprite.Group()
-size = 1000, 800
+size = 1650, 1280
 screen = pg.display.set_mode(size)
 pg.display.set_caption('app 2 h4ck 1dex ly7')
 keys = set()
 
-map_size = (650, 450)
-spn = (0.01, 0.01)
+map_size = (300, 300)
+spn = (1, 1)
 filename = "map.png"
 map_api_server = "https://static-maps.yandex.ru/1.x/"
 geocoder_api_server = "https://geocode-maps.yandex.ru/1.x/"
